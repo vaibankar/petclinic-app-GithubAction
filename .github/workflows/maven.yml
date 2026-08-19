@@ -1,55 +1,64 @@
-name: CICD Pipeline
+name: CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
-  
+    branches:
+      - main
+  pull_request:
 
 jobs:
-  Complie:
+  security-scan:
+
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
-    - name: Build with Maven
-      run: mvn compile
 
-  security-check:
-    runs-on: ubuntu-latest
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install Trivy
-      run: |
-         sudo apt-get update
-         sudo apt-get install -y wget gnupg
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
 
-         wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
-         | gpg --dearmor \
-         | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+      - name: Resolve Maven Dependencies
+        run: |
+          mvn dependency:resolve
+          mvn dependency:go-offline
 
-         echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" \
-         | sudo tee /etc/apt/sources.list.d/trivy.list
+      - name: Build Application
+        run: |
+          mvn clean package -DskipTests
 
-         sudo apt-get update
-         sudo apt-get install -y trivy
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg
 
-         trivy --version
-    
-    - name: Trivy FS Scan
-      run: trivy fs --format table -o fs-report.json .
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
+            | gpg --dearmor \
+            | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
 
-    - name: Gitleaks Installation  
-      run: sudo apt install gitleaks -y 
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" \
+            | sudo tee /etc/apt/sources.list.d/trivy.list
 
-    - name: Gitleaks Code Scan
-      run: gitleaks detect source -r gitleaks-reports.json -f json
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      - name: Trivy Filesystem Scan
+        run: |
+          trivy fs \
+            --format table \
+            --output fs-report.txt \
+            .
+
+      - name: Gitleaks Installation  
+        run: sudo apt install gitleaks -y 
+
+      - name: Gitleaks Code Scan
+        run: gitleaks detect source -r gitleaks-reports.json -f json
     
    
  
