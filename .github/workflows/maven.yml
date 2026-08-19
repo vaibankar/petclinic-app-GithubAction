@@ -7,12 +7,33 @@ on:
   pull_request:
 
 jobs:
-  security-scan:
 
+  compile:
+    name: Maven Compile
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Compile Application
+        run: |
+          mvn clean compile
+
+
+  security-scan:
+    name: Trivy Security Scan
+    needs: compile
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -27,10 +48,6 @@ jobs:
         run: |
           mvn dependency:resolve
           mvn dependency:go-offline
-
-      - name: Build Application
-        run: |
-          mvn clean package -DskipTests
 
       - name: Install Trivy
         run: |
@@ -50,8 +67,9 @@ jobs:
       - name: Trivy Filesystem Scan
         run: |
           trivy fs \
+            --scanners vuln \
             --format table \
-            --output fs-report.txt \
+            -o fs-report.txt \
             .
 
       - name: Gitleaks Installation  
