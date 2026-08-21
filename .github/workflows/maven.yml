@@ -10,7 +10,7 @@ jobs:
 
   compile:
     name: Maven Compile
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout Code
@@ -31,7 +31,7 @@ jobs:
   security-scan:
     name: Trivy Security Scan
     needs: compile
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout Code
